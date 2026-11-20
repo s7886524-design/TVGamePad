@@ -13,6 +13,8 @@ targets:
     platform: iOS
     sources:
       - path: iOS/TVGamePad
+        excludes:
+          - Info.plist
     info:
       path: iOS/TVGamePad/Info.plist
     settings:
