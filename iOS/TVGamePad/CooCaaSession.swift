@@ -26,7 +26,11 @@ final class CooCaaSession: ObservableObject {
         stopDiscovery()
         status = "正在搜索电视 · UDP 64315"
         do {
-            let listener = try NWListener(using: .udp, on: NWEndpoint.Port(rawValue: CooCaaWireProtocol.discoveryPort)!)
+            guard let discoveryPort = NWEndpoint.Port(rawValue: CooCaaWireProtocol.discoveryPort) else {
+                status = "搜索端口配置无效"
+                return
+            }
+            let listener = try NWListener(using: .udp, on: discoveryPort)
             discoveryListener = listener
             listener.stateUpdateHandler = { [weak self] state in
                 Task { @MainActor in
