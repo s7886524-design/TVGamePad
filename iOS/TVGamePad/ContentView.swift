@@ -315,7 +315,6 @@ struct ContentView: View {
                         .padding(.horizontal, max(20, (geo.size.width - cardWidth) / 2))
                     }
                     .frame(height: cardHeight + 8)
-                    .contentMargins(.horizontal, 0)
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                             proxy.scrollTo(selected.id, anchor: .center)
