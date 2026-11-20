@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-private enum PadRoute { case connect, choose, play, settings }
+private enum PadRoute: Equatable { case connect, choose, play, settings }
 
 private enum ControllerKind: String, CaseIterable, Identifiable {
     case fc = "FC", md = "MD", sfc = "SFC", ps = "PS", xbox = "XBOX"
