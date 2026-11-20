@@ -1,34 +1,69 @@
-# CooCaa virtual controller protocol status
+# CooKaa virtual controller protocol status
 
-## Confirmed observations from the target TV
+## Source and analysis
 
-- Target: Skyworth/CooCaa Android TV, Android 8.0.
-- Package process observed: `com.cocav.tiemu:virtualkeypad`.
-- A TCP listener was observed on port `62015` (hex `F23F`) bound to the wildcard IPv6 address.
-- The CooCaa UI shown by the user has a single action to connect a virtual controller and then waits/spins while searching for a phone.
-- No APK file or verified class-level analysis is currently available in this project workspace. Earlier references to specific virtual-keypad class names are not treated as verified evidence.
+- Source APK: CooKaa game 1.4.5, stored by the user in the public s7886524-design/rea repository.
+- Static analysis: GitHub Actions run 44818653783, completed successfully.
+- Artifact: CooKaa-1.4.5-static-analysis (14-day retention).
+- Decompiled implementation classes are in package com.cocav.tiemu.service.
 
-## Not yet confirmed
+## Confirmed discovery protocol
 
-- Whether the iPhone initiates TCP or the TV initiates a connection after discovery.
-- UDP discovery destination, port, packet contents, and response.
-- Authentication challenge/response fields and cryptographic transformation.
-- TCP frame boundaries, byte order, message types, button identifiers, and release semantics.
-- Whether the TV requires a controller identity, device name, or session token.
+TiVirtualKeypad starts a UDP broadcaster when the TV-side virtual-pad screen is waiting for a phone:
+- Destination: IPv4 broadcast 255.255.255.255
+- UDP destination port: 64315
+- Interval: 500 ms
+- Payload: TiObjectConverter.getBytes(VirtualPadModel)
+- VirtualPadModel has Ti class ID 3
+- Header 1: TV address string, formatted as ip:62015
+- Header 10: Android Build.MODEL device name
 
-## Engineering rule
+The iPhone should listen on UDP 64315 while the TV's virtual-pad waiting screen is active. It should not send an invented discovery packet.
 
-Do not send speculative bytes to the CooCaa service. The iOS app currently performs only an explicit TCP reachability/session check on port 62015. It does not claim to authenticate, pair, or control a game.
+## Confirmed TCP registration and approval
 
-## Next protocol investigation
+The TV listens on 0.0.0.0:62015. TiVirtualKeypad handles method 112 (Register):
+- Header 7: opaque authentication key bytes; the TV uses the hex representation as the pending device key.
+- Header 10: controller display name.
+- A transaction sequence header is required for a response.
+- If the TV-side waiting state is active and this key has not already been approved, the TV broadcasts ACTION_VKEY_NEED_AUTH and shows an approval dialog.
+- Accepting on the TV broadcasts Action_VKEY_AUTHED; the TV then attaches a TiVirtualKeypadEvent handler and responds with 0xF0 (OK).
+- Rejecting responds with 0xFC (NotAvailable).
+- This is an explicit on-TV user approval flow. Static code does not show a cryptographic challenge/response exchange.
 
-1. Obtain the exact CooCaa APK used on the TV (the APK is not currently present in the project workspace or accessible file library).
-2. Inspect its virtual-keypad classes and resources; verify class names from the actual binary rather than relying on earlier unverified references.
-3. Trace the discovery start/stop path and identify the exact UDP socket configuration.
-4. Record one legitimate pairing attempt and correlate TV logs with network socket activity.
-5. Recover the authentication exchange and framing from code before implementing a protocol adapter.
-6. Validate a single button-down and button-up pair, then test simultaneous inputs and disconnect cleanup.
+## Confirmed key event protocol
 
-## Compatibility boundary
+TiVirtualKeypadEvent handles:
+- Method 4: key down (KeyEvent.ACTION_DOWN).
+- Method 3: key up (KeyEvent.ACTION_UP).
+- Header 16: 32-bit big-endian Android key code.
+- Header 0xFE: transaction sequence, 32-bit big-endian.
+- The TV sends an OK response for sequenced transactions.
 
-Keep the original CooCaa APK and installed game resources unchanged. Any protocol work should be performed against the existing app and a controlled test session.
+The TV additionally remaps Android key codes 96/108 to DPAD_CENTER and 97 to BACK. DPAD directions are 19/20/21/22.
+
+## Wire framing recovered
+
+TiMessage.toBytes() and TiHeader.toBytes() use a compact TLV-like format:
+- Message: method byte, message payload length, then headers.
+- Header: type byte, value length, value bytes.
+- Lengths 0-127 use one byte; larger lengths use two bytes with the high bit set in the first byte.
+- Integer values use big-endian byte order.
+- VirtualPadModel strings use UTF-8.
+
+The iOS project now contains CooCaaWireProtocol.swift for advertisement decoding and message encoding, and CooCaaProtocolAdapter.swift for method/key-code mapping.
+
+## Remaining implementation and runtime validation
+
+- Integrate UDP 64315 listening into the iOS connection screen.
+- Connect to the discovered ip:62015, register with a generated opaque key and device name, and wait for the TV approval response.
+- Keep the TCP stream parser robust to partial/coalesced frames.
+- Send sequenced key-down/key-up requests only after successful registration.
+- Test on the actual TV and confirm one button press/release before calling the app fully compatible.
+
+## Safety and compatibility boundary
+
+- The original CooKaa APK and game resources remain unchanged.
+- No arbitrary packets are sent before the registration format is implemented.
+- A TCP socket connection alone is not considered successful pairing.
+- Static analysis is evidence of code paths, not proof of runtime behavior on every TV firmware version.
