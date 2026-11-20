@@ -6,7 +6,7 @@ An iPhone-native virtual controller for a Skyworth/CooCaa Android 8.0 TV.
 
 This repository starts the independent iOS app and Android TV receiver workspace. The CooCaa virtual-pad service was observed listening on TCP port **62015** on the target TV. That confirms a listener exists; it does **not** establish the wire protocol, authentication exchange, discovery mechanism, or button packet format.
 
-The app therefore does not send guessed packets or modify the installed CooCaa APK. The first milestone is a native controller UI plus a safe TCP reachability check. Actual control remains gated on documenting the protocol from the APK and/or a legitimate test session.
+The app therefore does not send guessed packets or modify the installed CooCaa APK. The current milestone is a native controller UI, normalized button events, and a safe TCP reachability check. A guarded protocol-adapter boundary is in place but intentionally sends no bytes. Actual control remains gated on inspecting the exact APK and/or a legitimate test session.
 
 ## Planned features
 
