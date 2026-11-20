@@ -19,6 +19,8 @@ final class CooCaaSession: ObservableObject {
     private var receiveBuffer = Data()
     private var sequence: UInt32 = 1
     private var isRegistering = false
+    private var pendingInputFrames: [Data] = []
+    private var isSendingInputFrame = false
 
     func startDiscovery() {
         stopDiscovery()
@@ -135,24 +137,42 @@ final class CooCaaSession: ObservableObject {
     }
 
     func send(_ event: ControllerInputEvent) {
-        guard isPaired, let connection = tcpConnection, let adapter else { return }
+        guard isPaired, let adapter, tcpConnection != nil else { return }
         do {
             let frame = try adapter.frame(for: event, sequence: nextSequence())
-            connection.send(content: frame, completion: .contentProcessed { [weak self, weak connection] error in
-                guard let error else { return }
-                Task { @MainActor in
-                    guard let self, let connection, self.tcpConnection === connection else { return }
+            pendingInputFrames.append(frame)
+            flushNextInputFrame()
+        } catch {
+            status = error.localizedDescription
+        }
+    }
+
+    /// Keep DOWN/UP frames ordered even when the user taps rapidly.
+    private func flushNextInputFrame() {
+        guard !isSendingInputFrame,
+              !pendingInputFrames.isEmpty,
+              isPaired,
+              let connection = tcpConnection else { return }
+
+        isSendingInputFrame = true
+        let frame = pendingInputFrames.removeFirst()
+        connection.send(content: frame, completion: .contentProcessed { [weak self, weak connection] error in
+            Task { @MainActor in
+                guard let self, let connection, self.tcpConnection === connection else { return }
+                self.isSendingInputFrame = false
+                if let error {
                     self.status = "按键发送失败：\(error.localizedDescription)"
+                    self.pendingInputFrames.removeAll()
                     self.isPaired = false
                     self.isConnected = false
                     self.adapter = nil
                     connection.cancel()
                     self.tcpConnection = nil
+                    return
                 }
-            })
-        } catch {
-            status = error.localizedDescription
-        }
+                self.flushNextInputFrame()
+            }
+        })
     }
 
     func disconnect(quiet: Bool = false) {
@@ -164,6 +184,8 @@ final class CooCaaSession: ObservableObject {
         isConnecting = false
         adapter = nil
         receiveBuffer.removeAll()
+        pendingInputFrames.removeAll()
+        isSendingInputFrame = false
         isPaired = false
         isRegistering = false
         sequence = 1
@@ -230,6 +252,8 @@ final class CooCaaSession: ObservableObject {
         isRegistering = false
         adapter = nil
         receiveBuffer.removeAll()
+        pendingInputFrames.removeAll()
+        isSendingInputFrame = false
     }
 
     private func consumeFrames() {
