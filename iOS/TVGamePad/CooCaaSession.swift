@@ -36,7 +36,9 @@ final class CooCaaSession: ObservableObject {
             }
             listener.newConnectionHandler = { [weak self] datagram in
                 datagram.start(queue: .global(qos: .userInitiated))
-                self?.receiveAdvertisements(on: datagram)
+                Task { @MainActor [weak self] in
+                    self?.receiveAdvertisements(on: datagram)
+                }
             }
             listener.start(queue: .global(qos: .userInitiated))
         } catch {
@@ -56,7 +58,9 @@ final class CooCaaSession: ObservableObject {
                 }
             }
             if error == nil && !isComplete {
-                self?.receiveAdvertisements(on: datagram)
+                Task { @MainActor [weak self] in
+                    self?.receiveAdvertisements(on: datagram)
+                }
             }
         }
     }
