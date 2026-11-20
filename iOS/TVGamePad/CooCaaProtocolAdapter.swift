@@ -56,7 +56,7 @@ struct CooCaaProtocolAdapter: ControllerTransport {
             "L1": 102, "R1": 103, "L2": 104, "R2": 105,
             "LB": 102, "RB": 103, "LT": 104, "RT": 105,
             "START": 108, "MENU": 108,
-            "SELECT": 109, "VIEW": 109,
+            "SELECT": 109, "VIEW": 109, "MODE": 110,
             "□": 99, "△": 100, "×": 96, "○": 97
         ]
         return codes[button]
