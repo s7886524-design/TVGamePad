@@ -1,0 +1,73 @@
+name: Analyze CooKaa APK
+
+on:
+  push:
+    paths:
+      - ".github/workflows/analyze-coocaa-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Download the APK from the REA repository
+        run: |
+          mkdir -p input reports
+          curl --fail --location --retry 3 \
+            "https://raw.githubusercontent.com/s7886524-design/rea/main/%E9%85%B7%E5%92%96%E6%B8%B8%E6%88%8F_1.4.5.apk" \
+            --output input/coocaa-1.4.5.apk
+          sha256sum input/coocaa-1.4.5.apk | tee reports/SHA256.txt
+          stat -c 'APK size: %s bytes' input/coocaa-1.4.5.apk | tee reports/file-info.txt
+
+      - name: Inspect APK container
+        run: |
+          unzip -l input/coocaa-1.4.5.apk > reports/apk-archive-list.txt
+          unzip -p input/coocaa-1.4.5.apk classes.dex 2>/dev/null | strings -n 5 > reports/dex-strings.txt || true
+          for dex in $(unzip -Z1 input/coocaa-1.4.5.apk | grep -E '^classes[0-9]*\.dex$'); do
+            unzip -p input/coocaa-1.4.5.apk "$dex" | strings -n 5
+          done > reports/all-dex-strings.txt
+
+      - name: Install JADX
+        run: |
+          curl --fail --location --retry 3 \
+            "https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip" \
+            --output /tmp/jadx.zip
+          mkdir -p /opt/jadx
+          unzip -q /tmp/jadx.zip -d /opt/jadx
+          chmod +x /opt/jadx/bin/jadx
+          echo "/opt/jadx/bin" >> "$GITHUB_PATH"
+
+      - name: Decompile and extract protocol clues
+        run: |
+          jadx --show-bad-code -d decoded input/coocaa-1.4.5.apk
+          {
+            echo "# CooKaa 1.4.5 APK static-analysis report"
+            echo
+            echo "This report is generated from the uploaded APK. String matches are leads, not proof of runtime behavior."
+            echo
+            echo "## Package and manifest"
+            echo
+            echo 'See decoded/resources/AndroidManifest.xml and decoded/resources/'
+            echo
+            echo "## Network, discovery, authentication and input matches"
+            echo
+            grep -RniE '62015|virtualkey|virtual.?pad|controller|gamepad|auth|discover|broadcast|multicast|datagram|socket|udp|tcp|inputevent|keyevent|button|connectVirtual|transferVirtual|pushControllerState' decoded --include='*.java' --include='*.xml' --include='*.txt' | head -n 2500 || true
+            echo
+            echo "## DEX string matches"
+            echo
+            grep -niE '62015|virtualkey|virtual.?pad|controller|gamepad|auth|discover|broadcast|multicast|datagram|socket|udp|tcp|inputevent|keyevent|button' reports/all-dex-strings.txt | head -n 1500 || true
+          } > reports/PROTOCOL-CLUES.md
+          cp decoded/resources/AndroidManifest.xml reports/AndroidManifest.xml 2>/dev/null || true
+          tar -czf reports/jadx-source.tar.gz decoded
+
+      - name: Upload analysis report
+        uses: actions/upload-artifact@v4
+        with:
+          name: CooKaa-1.4.5-static-analysis
+          path: reports/
+          if-no-files-found: error
+          retention-days: 14
