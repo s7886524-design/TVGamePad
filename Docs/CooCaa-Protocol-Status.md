@@ -6,7 +6,7 @@
 - Package process observed: `com.cocav.tiemu:virtualkeypad`.
 - A TCP listener was observed on port `62015` (hex `F23F`) bound to the wildcard IPv6 address.
 - The CooCaa UI shown by the user has a single action to connect a virtual controller and then waits/spins while searching for a phone.
-- Earlier APK inspection identified virtual-keypad-related classes/symbols including `VirtualPadActivity`, `TiVirtualDeviceProvider`, `TiVirtualInputDevice`, `TiVirtualKeypad`, `TiUdpSocket`, and `TiUdpWorker`. These names are leads, not a complete protocol specification.
+- No APK file or verified class-level analysis is currently available in this project workspace. Earlier references to specific virtual-keypad class names are not treated as verified evidence.
 
 ## Not yet confirmed
 
@@ -22,11 +22,12 @@ Do not send speculative bytes to the CooCaa service. The iOS app currently perfo
 
 ## Next protocol investigation
 
-1. Inspect the uploaded CooCaa APK's virtual-keypad classes and resources.
-2. Trace the TV app's discovery start/stop path and identify the exact UDP socket configuration.
-3. Record one legitimate pairing attempt and correlate the TV log with network socket activity.
-4. Recover the authentication exchange and framing from code before implementing a protocol adapter.
-5. Validate a single button-down and button-up pair, then test simultaneous inputs and disconnect cleanup.
+1. Obtain the exact CooCaa APK used on the TV (the APK is not currently present in the project workspace or accessible file library).
+2. Inspect its virtual-keypad classes and resources; verify class names from the actual binary rather than relying on earlier unverified references.
+3. Trace the discovery start/stop path and identify the exact UDP socket configuration.
+4. Record one legitimate pairing attempt and correlate TV logs with network socket activity.
+5. Recover the authentication exchange and framing from code before implementing a protocol adapter.
+6. Validate a single button-down and button-up pair, then test simultaneous inputs and disconnect cleanup.
 
 ## Compatibility boundary
 
