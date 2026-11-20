@@ -222,7 +222,7 @@ struct ContentView: View {
     private var controllerLibrary: some View {
         GeometryReader { geo in
             let compact = geo.size.height < 390
-            let cardWidth = min(geo.size.width * 0.60, 560)
+            let cardWidth = min(geo.size.width * 0.30, 340)
             let cardHeight = min(geo.size.height * 0.62, 310)
 
             ScrollViewReader { proxy in
