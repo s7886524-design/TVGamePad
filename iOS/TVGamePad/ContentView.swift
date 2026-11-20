@@ -313,48 +313,13 @@ struct ContentView: View {
                 }
                 .foregroundStyle(.white).padding(.horizontal, 13)
                 HStack(spacing: 0) {
-                    VStack(spacing: 0) {
-                        if selected == .ps || selected == .xbox {
-                            HStack(spacing: 12) {
-                                shoulderButton(selected == .ps ? "L2" : "LT", size: unit * 0.9)
-                                shoulderButton(selected == .ps ? "L1" : "LB", size: unit * 0.9)
-                            }.frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 10)
-                        } else if selected == .sfc {
-                            HStack(spacing: 12) { shoulderButton("L", size: unit * 0.9) }
-                                .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 10)
-                        }
-                        Spacer(minLength: 3)
-                        dpad(size: unit)
-                        Spacer(minLength: 3)
+                    if leftHanded {
+                        playActionSide(unit: unit)
+                        playDirectionSide(unit: unit)
+                    } else {
+                        playDirectionSide(unit: unit)
+                        playActionSide(unit: unit)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    VStack(spacing: 8) {
-                        if selected == .md {
-                            HStack(spacing: 6) {
-                                actionButton("Y", size: unit * 0.78)
-                                actionButton("X", size: unit * 0.78)
-                                actionButton("Z", size: unit * 0.78)
-                            }
-                        }
-                        HStack(spacing: 14) {
-                            utilityButton(selected == .xbox ? "VIEW" : "SELECT", size: unit * 0.58)
-                            utilityButton(selected == .xbox ? "MENU" : "START", size: unit * 0.58)
-                        }
-                        if selected == .sfc || selected == .ps || selected == .xbox {
-                            HStack(spacing: 12) {
-                                if selected == .sfc {
-                                    shoulderButton("R", size: unit * 0.9)
-                                } else {
-                                    shoulderButton(selected == .ps ? "R1" : "RB", size: unit * 0.9)
-                                    shoulderButton(selected == .ps ? "R2" : "RT", size: unit * 0.9)
-                                }
-                            }
-                        }
-                        Spacer(minLength: 0)
-                        actionCluster(size: unit)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 4)
                 HStack {
@@ -457,7 +422,7 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(PadPalette.line, lineWidth: 1))
     }
 
-    private func topBar: some View {
+    private var topBar: some View {
         HStack(spacing: 10) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10).fill(Color.cyan.opacity(0.13)).frame(width: 34, height: 34)
@@ -531,6 +496,55 @@ struct ContentView: View {
                 pressKey("→", width: s, height: s * 0.82, color: Color.white.opacity(0.16))
             }
             pressKey("↓", width: s, height: s * 0.82, color: Color.white.opacity(0.16))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+
+    private func playDirectionSide(unit: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            if selected == .ps || selected == .xbox {
+                HStack(spacing: 12) {
+                    shoulderButton(selected == .ps ? "L2" : "LT", size: unit * 0.9)
+                    shoulderButton(selected == .ps ? "L1" : "LB", size: unit * 0.9)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 10)
+            } else if selected == .sfc {
+                HStack(spacing: 12) { shoulderButton("L", size: unit * 0.9) }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 10)
+            }
+            Spacer(minLength: 3)
+            dpad(size: unit)
+            Spacer(minLength: 3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func playActionSide(unit: CGFloat) -> some View {
+        VStack(spacing: 8) {
+            if selected == .md {
+                HStack(spacing: 6) {
+                    actionButton("Y", size: unit * 0.78)
+                    actionButton("X", size: unit * 0.78)
+                    actionButton("Z", size: unit * 0.78)
+                }
+            }
+            HStack(spacing: 14) {
+                utilityButton(selected == .xbox ? "VIEW" : selected == .md ? "MODE" : "SELECT", size: unit * 0.58)
+                utilityButton(selected == .xbox ? "MENU" : "START", size: unit * 0.58)
+            }
+            if selected == .sfc || selected == .ps || selected == .xbox {
+                HStack(spacing: 12) {
+                    if selected == .sfc {
+                        shoulderButton("R", size: unit * 0.9)
+                    } else {
+                        shoulderButton(selected == .ps ? "R1" : "RB", size: unit * 0.9)
+                        shoulderButton(selected == .ps ? "R2" : "RT", size: unit * 0.9)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            actionCluster(size: unit)
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
