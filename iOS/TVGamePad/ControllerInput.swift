@@ -21,7 +21,7 @@ final class ControllerInputState: ObservableObject {
 
     var onEvent: ((ControllerInputEvent) -> Void)?
 
-    func update(_ button: String, pressed: Bool) {
+    func update(_ button: String, eventButton: String? = nil, pressed: Bool) {
         let wasPressed = pressedButtons.contains(button)
         guard wasPressed != pressed else { return }
 
@@ -33,7 +33,7 @@ final class ControllerInputState: ObservableObject {
 
         eventCount += 1
         latestEvent = "\(button) · \(pressed ? "DOWN" : "UP")"
-        onEvent?(ControllerInputEvent(button: button, phase: pressed ? .pressed : .released))
+        onEvent?(ControllerInputEvent(button: eventButton ?? button, phase: pressed ? .pressed : .released))
     }
 
     func releaseAll() {
