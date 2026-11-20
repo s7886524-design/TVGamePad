@@ -2,8 +2,8 @@ name: Analyze CooKaa APK
 
 on:
   push:
-    paths:
-      - ".github/workflows/analyze-coocaa-apk.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,6 @@ jobs:
       - name: Inspect APK container
         run: |
           unzip -l input/coocaa-1.4.5.apk > reports/apk-archive-list.txt
-          unzip -p input/coocaa-1.4.5.apk classes.dex 2>/dev/null | strings -n 5 > reports/dex-strings.txt || true
           for dex in $(unzip -Z1 input/coocaa-1.4.5.apk | grep -E '^classes[0-9]*\.dex$'); do
             unzip -p input/coocaa-1.4.5.apk "$dex" | strings -n 5
           done > reports/all-dex-strings.txt
@@ -47,15 +46,15 @@ jobs:
           {
             echo "# CooKaa 1.4.5 APK static-analysis report"
             echo
-            echo "This report is generated from the uploaded APK. String matches are leads, not proof of runtime behavior."
+            echo "Static-analysis matches are leads, not proof of runtime behavior."
             echo
             echo "## Package and manifest"
             echo
-            echo 'See decoded/resources/AndroidManifest.xml and decoded/resources/'
+            echo 'See decoded/resources/AndroidManifest.xml'
             echo
             echo "## Network, discovery, authentication and input matches"
             echo
-            grep -RniE '62015|virtualkey|virtual.?pad|controller|gamepad|auth|discover|broadcast|multicast|datagram|socket|udp|tcp|inputevent|keyevent|button|connectVirtual|transferVirtual|pushControllerState' decoded --include='*.java' --include='*.xml' --include='*.txt' | head -n 2500 || true
+            grep -RniE '62015|virtualkey|virtual.?pad|controller|gamepad|auth|discover|broadcast|multicast|datagram|socket|udp|tcp|inputevent|keyevent|button' decoded --include='*.java' --include='*.xml' --include='*.txt' | head -n 2500 || true
             echo
             echo "## DEX string matches"
             echo
