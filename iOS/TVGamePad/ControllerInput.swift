@@ -20,6 +20,7 @@ final class ControllerInputState: ObservableObject {
     @Published private(set) var eventCount = 0
 
     var onEvent: ((ControllerInputEvent) -> Void)?
+    private var activeEventButtons: [String: String] = [:]
 
     func update(_ button: String, eventButton: String? = nil, pressed: Bool) {
         let wasPressed = pressedButtons.contains(button)
@@ -27,13 +28,15 @@ final class ControllerInputState: ObservableObject {
 
         if pressed {
             pressedButtons.insert(button)
+            activeEventButtons[button] = eventButton ?? button
         } else {
             pressedButtons.remove(button)
         }
 
         eventCount += 1
         latestEvent = "\(button) · \(pressed ? "DOWN" : "UP")"
-        onEvent?(ControllerInputEvent(button: eventButton ?? button, phase: pressed ? .pressed : .released))
+        let wireButton = pressed ? (eventButton ?? button) : (activeEventButtons.removeValue(forKey: button) ?? eventButton ?? button)
+        onEvent?(ControllerInputEvent(button: wireButton, phase: pressed ? .pressed : .released))
     }
 
     func releaseAll() {
@@ -41,5 +44,6 @@ final class ControllerInputState: ObservableObject {
         for button in current {
             update(button, pressed: false)
         }
+        activeEventButtons.removeAll()
     }
 }
