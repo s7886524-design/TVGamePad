@@ -16,18 +16,39 @@ permissions:
 jobs:
   build:
     runs-on: macos-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
+
       - name: Build iOS Simulator app
-        run: xcodebuild -project TVGamePad.xcodeproj -scheme TVGamePad -sdk iphonesimulator -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild -project TVGamePad.xcodeproj -scheme TVGamePad -sdk iphonesimulator -configuration Debug -derivedDataPath build-simulator CODE_SIGNING_ALLOWED=NO
+
       - name: Upload simulator app
         uses: actions/upload-artifact@v4
         with:
           name: TVGamePad-iOS-Simulator
-          path: build/Build/Products/Debug-iphonesimulator/TVGamePad.app
+          path: build-simulator/Build/Products/Debug-iphonesimulator/TVGamePad.app
+          retention-days: 14
+
+      - name: Build iPhone device app
+        run: xcodebuild -project TVGamePad.xcodeproj -scheme TVGamePad -sdk iphoneos -configuration Release -derivedDataPath build-device CODE_SIGNING_ALLOWED=NO
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build-device/Build/Products/Release-iphoneos/TVGamePad.app Payload/TVGamePad.app
+          /usr/bin/zip -qry TVGamePad-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVGamePad-unsigned-IPA
+          path: TVGamePad-unsigned.ipa
+          if-no-files-found: error
           retention-days: 14
