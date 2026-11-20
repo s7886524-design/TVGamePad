@@ -220,67 +220,111 @@ struct ContentView: View {
     }
 
     private var controllerLibrary: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            topBar
-            HStack(alignment: .lastTextBaseline) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("CHOOSE YOUR DECK").font(.system(size: 10, weight: .bold, design: .rounded)).tracking(2.5).foregroundStyle(.cyan)
-                    Text("选择手柄").font(.system(size: 30, weight: .bold, design: .rounded)).foregroundStyle(.white)
+        GeometryReader { geo in
+            let compact = geo.size.height < 430
+            let cardGap: CGFloat = 12
+            let horizontalInset: CGFloat = max(18, geo.size.width * 0.035)
+            let cardWidth = max(150, (geo.size.width - horizontalInset * 2 - cardGap * 4) / 5)
+            let cardHeight = min(geo.size.height * 0.57, compact ? 245 : 390)
+
+            VStack(spacing: compact ? 8 : 12) {
+                topBar
+                    .frame(height: compact ? 30 : 38)
+
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("CHOOSE YOUR DECK")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .tracking(2.3).foregroundStyle(.cyan)
+                        Text("选择手柄")
+                            .font(.system(size: compact ? 21 : 27, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    Spacer()
+                    HStack(spacing: 7) {
+                        Circle().fill(.green).frame(width: 6, height: 6)
+                        Text("已连接 · \(connection.discoveredTV?.deviceName ?? "电视")")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.green)
+                    }
                 }
-                Spacer()
-                Text("已连接 · \(connection.discoveredTV?.deviceName ?? "电视")")
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(.green)
-            }
-            HStack(spacing: 13) {
-                ForEach(ControllerKind.allCases) { kind in
-                    Button {
-                        selected = kind
-                        tactile(.selection)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 12) {
-                            controllerMiniature(kind)
-                                .frame(maxWidth: .infinity).frame(height: 112)
-                                .background(PadPalette.base.opacity(0.75), in: RoundedRectangle(cornerRadius: 14))
-                            Text(kind.rawValue).font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                            Text(kind.subtitle).font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1.2).foregroundStyle(PadPalette.muted)
-                            Spacer(minLength: 0)
-                            HStack {
-                                Text(selected == kind ? "当前选择" : "选择此布局")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Spacer()
-                                Image(systemName: selected == kind ? "checkmark.circle.fill" : "arrow.up.right")
+                .frame(maxWidth: .infinity)
+
+                HStack(spacing: cardGap) {
+                    ForEach(ControllerKind.allCases) { kind in
+                        Button {
+                            selected = kind
+                            tactile(.selection)
+                        } label: {
+                            VStack(alignment: .leading, spacing: compact ? 7 : 10) {
+                                controllerMiniature(kind)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: cardHeight * 0.42)
+                                    .background(PadPalette.base.opacity(0.8), in: RoundedRectangle(cornerRadius: 13))
+                                Text(kind.rawValue)
+                                    .font(.system(size: compact ? 17 : 21, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                                Text(kind.subtitle)
+                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                    .tracking(1).foregroundStyle(PadPalette.muted)
+                                Spacer(minLength: 0)
+                                HStack(spacing: 5) {
+                                    Text(selected == kind ? "当前选择" : "选择此布局")
+                                    Spacer(minLength: 0)
+                                    Image(systemName: selected == kind ? "checkmark.circle.fill" : "arrow.up.right")
+                                }
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(selected == kind ? kind.accent : PadPalette.muted)
                             }
-                            .foregroundStyle(selected == kind ? kind.accent : PadPalette.muted)
+                            .padding(compact ? 10 : 13)
+                            .frame(width: cardWidth, height: cardHeight, alignment: .leading)
+                            .background(PadPalette.panel, in: RoundedRectangle(cornerRadius: 17))
+                            .overlay(RoundedRectangle(cornerRadius: 17)
+                                .stroke(selected == kind ? kind.accent.opacity(0.8) : PadPalette.line,
+                                        lineWidth: selected == kind ? 1.7 : 1))
                         }
-                        .padding(13).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .background(PadPalette.panel, in: RoundedRectangle(cornerRadius: 19))
-                        .overlay(RoundedRectangle(cornerRadius: 19).stroke(selected == kind ? kind.accent.opacity(0.7) : PadPalette.line, lineWidth: selected == kind ? 1.5 : 1))
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(selected.rawValue) · \(selected.subtitle)")
+                            .font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+                        Text("按下进入全屏手柄，所有按键均可触控操作。")
+                            .font(.system(size: 10)).foregroundStyle(PadPalette.muted)
+                    }
+                    Spacer(minLength: 8)
+                    Button {
+                        input.releaseAll()
+                        route = .play
+                        tactile(.success)
+                    } label: {
+                        HStack(spacing: 9) {
+                            Text("进入手柄")
+                            Image(systemName: "arrow.right")
+                        }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(PadPalette.base)
+                        .padding(.horizontal, 22)
+                        .frame(height: compact ? 39 : 45)
+                        .background(selected.accent, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
+                .frame(maxWidth: .infinity)
+
+                bottomBrand
             }
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(selected.rawValue) · \(selected.subtitle)").font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
-                    Text("布局可在游戏中编辑，也可在设置中心调整触感与外观。").font(.system(size: 11)).foregroundStyle(PadPalette.muted)
-                }
-                Spacer()
-                Button {
-                    route = .play
-                    tactile(.success)
-                } label: {
-                    HStack(spacing: 10) {
-                        Text("进入手柄")
-                        Image(systemName: "arrow.right")
-                    }
-                    .font(.system(size: 14, weight: .bold)).foregroundStyle(PadPalette.base)
-                    .padding(.horizontal, 23).frame(height: 48)
-                    .background(selected.accent, in: Capsule())
-                }.buttonStyle(.plain)
-            }
-            bottomBrand
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, compact ? 7 : 11)
+            .padding(.bottom, 7)
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background(PadPalette.base)
         }
-        .padding(.horizontal, 24).padding(.top, 13).padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     private var controllerPlay: some View {
