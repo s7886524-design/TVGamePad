@@ -67,6 +67,15 @@ enum CooCaaWireProtocol {
         )
     }
 
+    /// Returns the complete frame size once the outer length field is available.
+    /// The TCP stream may deliver only part of a frame or several frames at once.
+    static func frameLength(in data: Data) -> Int? {
+        guard data.count >= 2 else { return nil }
+        var cursor = 1
+        guard let payloadLength = readLength(data, cursor: &cursor) else { return nil }
+        return cursor + payloadLength
+    }
+
     static func decodeMessage(_ data: Data) -> (method: UInt8, headers: [UInt8: Data])? {
         guard data.count >= 2 else { return nil }
         let method = data[0]
