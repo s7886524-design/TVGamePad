@@ -35,6 +35,10 @@ private enum ControllerKind: String, CaseIterable, Identifiable {
     }
 }
 
+private enum KeyChoices {
+    static let values = ["A", "B", "C", "X", "Y", "Z", "L", "R", "L1", "R1", "L2", "R2", "LB", "RB", "LT", "RT", "START", "SELECT", "MODE", "VIEW", "MENU", "↑", "↓", "←", "→", "□", "△", "×", "○"]
+}
+
 private enum PadPalette {
     static let base = Color(red: 0.035, green: 0.047, blue: 0.067)
     static let panel = Color(red: 0.075, green: 0.09, blue: 0.12)
