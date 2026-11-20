@@ -36,16 +36,7 @@ final class CooCaaSession: ObservableObject {
             }
             listener.newConnectionHandler = { [weak self] datagram in
                 datagram.start(queue: .global(qos: .userInitiated))
-                datagram.receiveMessage { data, _, _, error in
-                    guard let data, error == nil else { return }
-                    Task { @MainActor in
-                        guard let self,
-                              let advertisement = try? CooCaaWireProtocol.decodeAdvertisement(data) else { return }
-                        self.discoveredTV = advertisement
-                        self.status = "发现电视：\(advertisement.deviceName) · \(advertisement.address)"
-                        self.onStatusChange?(self.status)
-                    }
-                }
+                self?.receiveAdvertisements(on: datagram)
             }
             listener.start(queue: .global(qos: .userInitiated))
         } catch {
@@ -53,6 +44,22 @@ final class CooCaaSession: ObservableObject {
         }
     }
 
+    private func receiveAdvertisements(on datagram: NWConnection) {
+        datagram.receiveMessage { [weak self] data, _, isComplete, error in
+            if let data, error == nil,
+               let advertisement = try? CooCaaWireProtocol.decodeAdvertisement(data) {
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.discoveredTV = advertisement
+                    self.status = "发现电视：\(advertisement.deviceName) · \(advertisement.address)"
+                    self.onStatusChange?(self.status)
+                }
+            }
+            if error == nil && !isComplete {
+                self?.receiveAdvertisements(on: datagram)
+            }
+        }
+    }
     func stopDiscovery() {
         discoveryListener?.newConnectionHandler = nil
         discoveryListener?.cancel()
@@ -74,6 +81,8 @@ final class CooCaaSession: ObservableObject {
             return
         }
         disconnect(quiet: true)
+        sequence = 1
+        receiveBuffer.removeAll()
         status = "正在连接电视 TCP \(port)…"
 
         let connection = NWConnection(
@@ -143,6 +152,7 @@ final class CooCaaSession: ObservableObject {
         receiveBuffer.removeAll()
         isPaired = false
         isRegistering = false
+        sequence = 1
         if !quiet {
             status = "已断开"
             onStatusChange?(status)
