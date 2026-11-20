@@ -21,75 +21,10 @@ private enum ControllerKind: String, CaseIterable, Identifiable {
     }
 }
 
-@MainActor
-final class TVConnectionModel: ObservableObject {
-    @Published var host = ""
-    @Published private(set) var status = "未连接"
-    @Published private(set) var isConnecting = false
-    @Published private(set) var isConnected = false
-
-    private var connection: NWConnection?
-
-    func connect() {
-        let address = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !address.isEmpty else {
-            status = "请先输入电视 IP 地址"
-            return
-        }
-
-        disconnect(quiet: true)
-        isConnecting = true
-        status = "正在连接电视 TCP 62015…"
-
-        let endpoint = NWEndpoint.hostPort(
-            host: NWEndpoint.Host(address),
-            port: NWEndpoint.Port(rawValue: 62015)!
-        )
-        let candidate = NWConnection(to: endpoint, using: .tcp)
-        connection = candidate
-
-        candidate.stateUpdateHandler = { [weak self, weak candidate] state in
-            Task { @MainActor in
-                guard let self, let candidate, self.connection === candidate else { return }
-                switch state {
-                case .ready:
-                    self.isConnecting = false
-                    self.isConnected = true
-                    self.status = "TCP 已连通 · 等待酷咖协议适配"
-                case .failed(let error):
-                    self.isConnecting = false
-                    self.isConnected = false
-                    self.status = "连接失败：\(error.localizedDescription)"
-                    candidate.cancel()
-                    self.connection = nil
-                case .waiting(let error):
-                    self.isConnecting = true
-                    self.isConnected = false
-                    self.status = "正在等待网络：\(error.localizedDescription)"
-                case .cancelled:
-                    self.isConnecting = false
-                    self.isConnected = false
-                default:
-                    break
-                }
-            }
-        }
-        candidate.start(queue: .global(qos: .userInitiated))
-    }
-
-    func disconnect(quiet: Bool = false) {
-        connection?.stateUpdateHandler = nil
-        connection?.cancel()
-        connection = nil
-        isConnecting = false
-        isConnected = false
-        if !quiet { status = "已断开" }
-    }
-}
-
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var connection = TVConnectionModel()
+    @StateObject private var connection = CooCaaSession()
+    @State private var host = ""
     @StateObject private var input = ControllerInputState()
     @State private var selected: ControllerKind = .fc
 
@@ -105,6 +40,10 @@ struct ContentView: View {
             .padding(16)
         }
         .statusBarHidden()
+         .onAppear {
+            connection.startDiscovery()
+            input.onEvent = { event in connection.send(event) }
+        }
         .onChange(of: scenePhase) { phase in
             if phase != .active { input.releaseAll() }
         }
@@ -209,7 +148,7 @@ struct ContentView: View {
     private var connectionPanel: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 9) {
-                TextField("输入电视 IP 地址", text: $connection.host)
+                TextField("输入电视 IP 地址", text: $host)
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -217,17 +156,27 @@ struct ContentView: View {
                     .frame(maxWidth: 205)
 
                 Button {
-                    connection.connect()
+                    connection.connect(hostPort: host)
                 } label: {
                     if connection.isConnecting {
                         ProgressView().tint(.black)
                     } else {
-                        Text("连接")
+                        Text("手动连接")
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.cyan)
-                .disabled(connection.isConnecting || connection.isConnected)
+                .disabled(connection.isConnecting || connection.isConnected || host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Button("搜索电视") {
+                    connection.startDiscovery()
+                }
+                .buttonStyle(.bordered)
+                Button("连接已发现设备") {
+                    connection.connectDiscoveredTV()
+                }
+                .buttonStyle(.bordered)
+                .disabled(connection.discoveredTV == nil || connection.isConnecting || connection.isConnected)
 
                 Button("断开") {
                     connection.disconnect()
