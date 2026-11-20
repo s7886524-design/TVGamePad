@@ -18,7 +18,7 @@ jobs:
         run: |
           mkdir -p input reports
           curl --fail --location --retry 3 \
-            "https://raw.githubusercontent.com/s7886524-design/rea/main/%E9%85%B7%E5%92%96%E6%B8%B8%E6%88%8F_1.4.5.apk" \
+            "https://raw.githubusercontent.com/s7886524-design/rea/main/酷咖游戏_1.4.5.apk" \
             --output input/coocaa-1.4.5.apk
           sha256sum input/coocaa-1.4.5.apk | tee reports/SHA256.txt
           stat -c 'APK size: %s bytes' input/coocaa-1.4.5.apk | tee reports/file-info.txt
