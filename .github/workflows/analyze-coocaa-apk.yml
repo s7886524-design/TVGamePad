@@ -17,9 +17,8 @@ jobs:
       - name: Download the APK from the REA repository
         run: |
           mkdir -p input reports
-          curl --fail --location --retry 3 \
-            "https://raw.githubusercontent.com/s7886524-design/rea/main/酷咖游戏_1.4.5.apk" \
-            --output input/coocaa-1.4.5.apk
+          git clone --depth 1 https://github.com/s7886524-design/rea.git /tmp/rea
+          cp "/tmp/rea/酷咖游戏_1.4.5.apk" input/coocaa-1.4.5.apk
           sha256sum input/coocaa-1.4.5.apk | tee reports/SHA256.txt
           stat -c 'APK size: %s bytes' input/coocaa-1.4.5.apk | tee reports/file-info.txt
 
