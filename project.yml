@@ -1,0 +1,26 @@
+name: TVGamePad
+options:
+  bundleIdPrefix: com.s7886524design
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  TVGamePad:
+    type: application
+    platform: iOS
+    sources:
+      - path: iOS/TVGamePad
+    info:
+      path: iOS/TVGamePad/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.s7886524design.TVGamePad
+        PRODUCT_NAME: TVGamePad
+        INFOPLIST_KEY_CFBundleDisplayName: TV GamePad
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "TV GamePad uses your local Wi-Fi network to find and connect to your television."
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        GENERATE_INFOPLIST_FILE: YES
