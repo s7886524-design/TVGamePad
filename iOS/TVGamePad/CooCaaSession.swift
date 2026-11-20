@@ -279,12 +279,40 @@ final class CooCaaSession: ObservableObject {
     }
 
     private func consumeFrames() {
-        while let frameLength = CooCaaWireProtocol.frameLength(in: receiveBuffer),
-              receiveBuffer.count >= frameLength {
-            let frame = receiveBuffer.prefix(frameLength)
-            let data = Data(frame)
-            receiveBuffer.removeFirst(frameLength)
-            guard let message = CooCaaWireProtocol.decodeMessage(data) else { continue }
+        // Work from a stable snapshot. Mutating Data with removeFirst while
+        // iterating over a Data.SubSequence can trigger an index precondition
+        // on some Foundation implementations (reported as SIGTRAP here).
+        let snapshot = receiveBuffer
+        var consumedCount = 0
+        let maximumFrameLength = 64 * 1024
+
+        while consumedCount < snapshot.count {
+            let remaining = snapshot.dropFirst(consumedCount)
+            guard let frameLength = CooCaaWireProtocol.frameLength(in: Data(remaining)) else {
+                break // The TCP stream may have delivered only a partial header.
+            }
+
+            guard frameLength >= 2, frameLength <= maximumFrameLength else {
+                status = "电视数据帧长度异常，已断开连接"
+                if let connection = tcpConnection {
+                    resetConnectionAfterRemoteClose(connection)
+                }
+                onStatusChange?(status)
+                return
+            }
+
+            guard remaining.count >= frameLength else {
+                break // Wait for the rest of this frame.
+            }
+
+            let frameData = Data(remaining.prefix(frameLength))
+            consumedCount += frameLength
+
+            guard let message = CooCaaWireProtocol.decodeMessage(frameData) else {
+                // Skip this bounded malformed frame instead of indexing into it.
+                continue
+            }
+
             if message.method == CooCaaWireProtocol.responseOK {
                 isPaired = true
                 isRegistering = false
@@ -296,6 +324,11 @@ final class CooCaaSession: ObservableObject {
                 status = "电视拒绝了配对请求"
                 onStatusChange?(status)
             }
+        }
+
+        // Replace the buffer once, after parsing. Avoid Data.removeFirst here.
+        if consumedCount > 0 {
+            receiveBuffer = Data(snapshot.dropFirst(consumedCount))
         }
     }
 
