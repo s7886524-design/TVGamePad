@@ -1,36 +1,36 @@
 # TVGamePad
 
-An iPhone-native virtual controller for a Skyworth/CooCaa Android 8.0 TV.
+An iPhone-native virtual controller for a Skyworth/CooCaa Android TV.
 
 ## Current development status
 
-This repository starts the independent iOS app and Android TV receiver workspace. The CooCaa virtual-pad service was observed listening on TCP port **62015** on the target TV. That confirms a listener exists; it does **not** establish the wire protocol, authentication exchange, discovery mechanism, or button packet format.
+The exact CooKaa 1.4.5 APK has now been statically analyzed in GitHub Actions. The recovered protocol shows:
 
-The app therefore does not send guessed packets or modify the installed CooCaa APK. The current milestone is a native controller UI, normalized button events, and a safe TCP reachability check. A guarded protocol-adapter boundary is in place but intentionally sends no bytes. Actual control remains gated on inspecting the exact APK and/or a legitimate test session.
+- TV discovery: UDP broadcast to 255.255.255.255:64315 every 500 ms while the TV-side virtual-pad screen is waiting.
+- Advertisement payload: Ti model message (class ID 3), header 1 = TV address ending in :62015, header 10 = TV model name.
+- TCP service: TV listens on port 62015.
+- Registration: method 112, header 7 = opaque client key, header 10 = controller name. The TV asks the user to approve the pairing on the TV screen.
+- Input: method 4 for key down, method 3 for key up, header 16 = 32-bit Android key code, header 0xFE = transaction sequence.
 
-## Planned features
+The iOS repository now contains a TiMessage wire codec and Android key-code adapter based on the decompiled implementation. UDP discovery, TCP registration/approval handling, stream parsing, and end-to-end input delivery still need integration and testing on the actual TV. The app must not be described as fully working until that test passes.
+
+## Planned and implemented UI features
 
 - Native SwiftUI iPhone app, landscape-first controller screens.
 - FC/NES, Mega Drive/Genesis, SFC/SNES, PlayStation-style, and Xbox-style layouts.
-- Button down/up state, turbo, customizable layouts.
-- LAN TV discovery and pairing.
-- CooCaa protocol adapter, only after the handshake and packet format are verified.
-- Android TV receiver for independent/test integrations where needed.
+- Button down/up state and a protocol adapter boundary.
+- LAN discovery and TV-approved pairing are the next integration stage.
 
 ## Repository layout
 
-- `iOS/TVGamePad`: SwiftUI app.
-- `AndroidTV`: Android TV receiver workspace.
-- `.github/workflows`: unsigned iOS simulator build and Android debug build.
+- iOS/TVGamePad: SwiftUI app and CooKaa protocol implementation.
+- Docs: architecture and protocol analysis notes.
+- .github/workflows: automatic iOS Simulator build on relevant main-branch changes.
 
 ## Build
 
-The iOS workflow builds for the simulator without signing. A distributable iPhone IPA requires a signing certificate/profile or a configured signing service. The Android workflow builds a debug APK.
-
-## Network permissions
-
-The iOS app requires Local Network permission. iOS will prompt on first LAN use. Both devices must be on the same Wi-Fi/LAN, and client isolation on the router must be disabled.
+The iOS workflow builds for the simulator without signing. A distributable iPhone IPA requires a signing certificate/profile or a configured signing service.
 
 ## Safety / compatibility
 
-Do not assume that TCP port 62015 alone is sufficient for compatibility. Do not alter or replace the original CooCaa app or its game resources.
+The original CooKaa APK and game resources remain unchanged. Static analysis is not a substitute for validating pairing and button events on the target TV.
