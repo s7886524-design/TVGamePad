@@ -82,7 +82,10 @@ final class CooCaaSession: ObservableObject {
 
     func connect(hostPort: String) {
         let parts = Self.splitHostPort(hostPort)
-        guard let (host, port) = parts else {
+        guard let (host, port) = parts,
+              !host.isEmpty,
+              port > 0,
+              let endpointPort = NWEndpoint.Port(rawValue: port) else {
             status = "电视地址格式无效"
             return
         }
@@ -92,7 +95,7 @@ final class CooCaaSession: ObservableObject {
         status = "正在连接电视 TCP \(port)…"
 
         let connection = NWConnection(
-            to: .hostPort(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: port)!),
+            to: .hostPort(host: NWEndpoint.Host(host), port: endpointPort),
             using: .tcp
         )
         tcpConnection = connection
@@ -120,6 +123,9 @@ final class CooCaaSession: ObservableObject {
                     self.isRegistering = false
                     self.adapter = nil
                     self.receiveBuffer.removeAll()
+                    self.pendingInputFrames.removeAll()
+                    self.isSendingInputFrame = false
+                    self.tcpConnection = nil
                     self.status = "连接失败：\(error.localizedDescription)"
                 case .cancelled:
                     self.isConnecting = false
@@ -140,6 +146,12 @@ final class CooCaaSession: ObservableObject {
         guard isPaired, let adapter, tcpConnection != nil else { return }
         do {
             let frame = try adapter.frame(for: event, sequence: nextSequence())
+            // A blocked TV must not allow unbounded memory growth from rapid taps.
+            guard pendingInputFrames.count < 96 else {
+                status = "电视响应过慢，已清空按键队列"
+                pendingInputFrames.removeAll(keepingCapacity: true)
+                return
+            }
             pendingInputFrames.append(frame)
             flushNextInputFrame()
         } catch {
@@ -223,6 +235,12 @@ final class CooCaaSession: ObservableObject {
             Task { @MainActor in
                 guard let self, self.tcpConnection === connection else { return }
                 if let data, !data.isEmpty {
+                    // Reject abnormal streams rather than growing memory indefinitely.
+                    guard self.receiveBuffer.count + data.count <= 256 * 1024 else {
+                        self.status = "电视数据异常，已断开连接"
+                        self.resetConnectionAfterRemoteClose(connection)
+                        return
+                    }
                     self.receiveBuffer.append(data)
                     self.consumeFrames()
                 }
@@ -286,13 +304,17 @@ final class CooCaaSession: ObservableObject {
         if value.hasPrefix("["), let close = value.firstIndex(of: "]") {
             let host = String(value[value.index(after: value.startIndex)..<close])
             let suffix = value[value.index(after: close)...]
-            guard suffix.first == ":", let port = UInt16(suffix.dropFirst()) else { return nil }
+            guard suffix.first == ":", !host.isEmpty,
+                  let port = UInt16(suffix.dropFirst()), port > 0 else { return nil }
             return (host, port)
         }
         guard let colon = value.lastIndex(of: ":") else {
             return value.isEmpty ? nil : (value, CooCaaWireProtocol.tcpPort)
         }
-        guard let port = UInt16(value[value.index(after: colon)...]) else { return nil }
-        return (String(value[..<colon]), port)
+        let host = String(value[..<colon])
+        guard !host.isEmpty,
+              let port = UInt16(value[value.index(after: colon)...]),
+              port > 0 else { return nil }
+        return (host, port)
     }
 }
