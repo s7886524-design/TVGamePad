@@ -63,8 +63,9 @@ final class TVConnectionModel: ObservableObject {
                     candidate.cancel()
                     self.connection = nil
                 case .waiting(let error):
-                    self.isConnecting = false
-                    self.status = "网络等待：\(error.localizedDescription)"
+                    self.isConnecting = true
+                    self.isConnected = false
+                    self.status = "正在等待网络：\(error.localizedDescription)"
                 case .cancelled:
                     self.isConnecting = false
                     self.isConnected = false
