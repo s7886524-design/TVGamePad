@@ -112,7 +112,7 @@ struct ContentView: View {
 
     private func controllerSurface(availableHeight: CGFloat, compact: Bool) -> some View {
         let diameter = min(compact ? 48 : 62, max(38, availableHeight * (compact ? 0.125 : 0.15)))
-        let gap = compact ? 7.0 : 10.0
+        let gap: CGFloat = compact ? 7 : 10
         let columns = Array(repeating: GridItem(.flexible(), spacing: gap), count: selected.buttons.count > 8 ? 5 : 4)
 
         return HStack(spacing: compact ? 12 : 22) {
