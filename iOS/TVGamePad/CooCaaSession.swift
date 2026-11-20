@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import Network
 
 /// Owns UDP discovery, TCP registration, TV-side approval and sequenced input.
@@ -7,6 +8,8 @@ final class CooCaaSession: ObservableObject {
     @Published private(set) var status = "等待电视"
     @Published private(set) var discoveredTV: CooCaaWireProtocol.Advertisement?
     @Published private(set) var isPaired = false
+    @Published private(set) var isConnected = false
+    @Published private(set) var isConnecting = false
 
     var onStatusChange: ((String) -> Void)?
 
@@ -83,15 +86,26 @@ final class CooCaaSession: ObservableObject {
                 guard let self, let connection, self.tcpConnection === connection else { return }
                 switch state {
                 case .ready:
+                    self.isConnected = true
+                    self.isConnecting = false
                     self.status = "TCP 已连接 · 正在请求电视授权"
                     self.beginRegistration()
                     self.receiveNext()
+                case .setup:
+                    self.isConnecting = true
+                case .preparing:
+                    self.isConnecting = true
                 case .waiting(let error):
+                    self.isConnecting = true
                     self.status = "等待电视网络：\(error.localizedDescription)"
                 case .failed(let error):
+                    self.isConnecting = false
+                    self.isConnected = false
                     self.isPaired = false
                     self.status = "连接失败：\(error.localizedDescription)"
                 case .cancelled:
+                    self.isConnecting = false
+                    self.isConnected = false
                     self.isPaired = false
                 default:
                     break
@@ -123,6 +137,8 @@ final class CooCaaSession: ObservableObject {
         tcpConnection?.stateUpdateHandler = nil
         tcpConnection?.cancel()
         tcpConnection = nil
+        isConnected = false
+        isConnecting = false
         adapter = nil
         receiveBuffer.removeAll()
         isPaired = false
