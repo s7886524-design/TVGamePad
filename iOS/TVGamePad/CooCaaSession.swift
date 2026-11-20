@@ -233,8 +233,10 @@ final class CooCaaSession: ObservableObject {
             guard suffix.first == ":", let port = UInt16(suffix.dropFirst()) else { return nil }
             return (host, port)
         }
-        guard let colon = value.lastIndex(of: ":"),
-              let port = UInt16(value[value.index(after: colon)...]) else { return nil }
+        guard let colon = value.lastIndex(of: ":") else {
+            return value.isEmpty ? nil : (value, CooCaaWireProtocol.tcpPort)
+        }
+        guard let port = UInt16(value[value.index(after: colon)...]) else { return nil }
         return (String(value[..<colon]), port)
     }
 }
