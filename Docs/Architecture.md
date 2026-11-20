@@ -2,22 +2,25 @@
 
 ## iOS app
 
-- `ContentView.swift`: landscape controller UI and manual TV connection panel.
-- `ControllerInput.swift`: normalized button down/up event model.
-- `TVConnectionModel`: TCP reachability/session lifecycle for the observed CooCaa port.
+- ContentView.swift: landscape controller UI and connection panel.
+- ControllerInput.swift: normalized button down/up events.
+- CooCaaWireProtocol.swift: recovered TiMessage framing, TV UDP advertisement decoding, registration and key-event encoders.
+- CooCaaProtocolAdapter.swift: registration identity and Android KeyEvent mapping.
 
-## Input pipeline
+## Recovered CooKaa 1.4.5 protocol
 
-Touch gestures produce `ControllerInputEvent` values with a button name and pressed/released phase. The event model deliberately has no network encoder yet. Once the CooCaa wire format is confirmed, a protocol adapter can subscribe to these events without coupling the UI to packet details.
+- TV advertises on UDP broadcast port 64315 while its virtual-pad waiting screen is active.
+- Advertisement contains a Ti model message (class ID 3), header 1 = TV ip:62015, header 10 = TV model name.
+- iPhone connects to the TV TCP listener on port 62015.
+- Register is method 112, header 7 = opaque client key bytes, header 10 = controller display name.
+- The TV asks the user to approve the connection on the TV screen. Successful approval returns response 0xF0.
+- Key down is method 4; key up is method 3; header 16 carries a 32-bit big-endian Android key code.
+- Each request includes header 0xFE with a 32-bit big-endian transaction sequence.
 
-## Connection pipeline
+## Remaining connection work
 
-The current connection check opens a TCP connection to the manually entered TV address on port 62015. A successful TCP connection means only that the socket accepted a connection. It does not mean the CooCaa pairing/authentication succeeded.
-
-## Discovery
-
-No Bonjour service type or UDP discovery format has been confirmed. Do not invent a Bonjour service name or send arbitrary broadcast packets. Add automatic discovery only after the target protocol is identified.
+The wire codec and key mapping are committed, but the current screen still performs only a manual TCP reachability check. UDP discovery, registration/approval state, stream framing, and actual input delivery must be integrated and tested before claiming end-to-end controller support.
 
 ## Build policy
 
-GitHub Actions contains a simulator build workflow. Do not trigger it until the user explicitly asks to build.
+GitHub Actions is configured to start an iOS Simulator build automatically after relevant source changes on main. Simulator build output is not an installable signed iPhone IPA.
