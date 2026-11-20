@@ -21,7 +21,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.s7886524design.TVGamePad
         PRODUCT_NAME: TVGamePad
-        INFOPLIST_KEY_CFBundleDisplayName: TV GamePad
+        INFOPLIST_KEY_CFBundleDisplayName: NEXTPAD
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "TV GamePad uses your local Wi-Fi network to find and connect to your television."
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
