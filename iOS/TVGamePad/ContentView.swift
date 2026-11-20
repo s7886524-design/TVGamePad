@@ -1,5 +1,4 @@
 import SwiftUI
-import Network
 
 private enum ControllerKind: String, CaseIterable, Identifiable {
     case fc = "FC"
@@ -24,9 +23,9 @@ private enum ControllerKind: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var connection = CooCaaSession()
-    @State private var host = ""
     @StateObject private var input = ControllerInputState()
     @State private var selected: ControllerKind = .fc
+    @State private var host = ""
 
     var body: some View {
         ZStack {
@@ -40,9 +39,9 @@ struct ContentView: View {
             .padding(16)
         }
         .statusBarHidden()
-         .onAppear {
-            connection.startDiscovery()
+        .onAppear {
             input.onEvent = { event in connection.send(event) }
+            connection.startDiscovery()
         }
         .onChange(of: scenePhase) { phase in
             if phase != .active { input.releaseAll() }
@@ -64,9 +63,9 @@ struct ContentView: View {
             Spacer()
             HStack(spacing: 7) {
                 Circle()
-                    .fill(connection.isConnected ? Color.green : Color.white.opacity(0.3))
+                    .fill(connection.isPaired ? Color.green : (connection.isConnected ? Color.orange : Color.white.opacity(0.3)))
                     .frame(width: 7, height: 7)
-                Text(connection.isConnected ? "TCP CONNECTED" : "NOT CONNECTED")
+                Text(connection.isPaired ? "PAIRED" : (connection.isConnected ? "APPROVAL" : "NOT CONNECTED"))
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -146,55 +145,69 @@ struct ContentView: View {
     }
 
     private var connectionPanel: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 9) {
-                TextField("输入电视 IP 地址", text: $host)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                TextField("电视 IP（可选手动输入）", text: $host)
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.decimalPad)
-                    .frame(maxWidth: 205)
+                    .frame(maxWidth: 230)
 
-                Button {
+                Button("手动连接") {
                     connection.connect(hostPort: host)
-                } label: {
-                    if connection.isConnecting {
-                        ProgressView().tint(.black)
-                    } else {
-                        Text("手动连接")
-                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.cyan)
                 .disabled(connection.isConnecting || connection.isConnected || host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                Button("搜索电视") {
+                Button("搜索") {
                     connection.startDiscovery()
                 }
                 .buttonStyle(.bordered)
-                Button("连接已发现设备") {
-                    connection.connectDiscoveredTV()
+                .disabled(connection.isConnecting)
+                Spacer(minLength: 0)
+                Text("事件 \(input.eventCount)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.42))
+            }
+
+            HStack(spacing: 8) {
+                if let tv = connection.discoveredTV {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tv.deviceName)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                        Text(tv.address)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                    Spacer(minLength: 4)
+                    Button("连接这台电视") {
+                        connection.connectDiscoveredTV()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.cyan)
+                    .disabled(connection.isConnecting || connection.isConnected)
+                } else {
+                    Text("请先在电视打开「连接虚拟手柄」等待页面")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Spacer()
                 }
-                .buttonStyle(.bordered)
-                .disabled(connection.discoveredTV == nil || connection.isConnecting || connection.isConnected)
 
                 Button("断开") {
                     connection.disconnect()
                 }
                 .buttonStyle(.bordered)
                 .disabled(!connection.isConnected && !connection.isConnecting)
-
-                Spacer(minLength: 0)
-
-                Text("输入事件：\(input.eventCount)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.42))
             }
 
             HStack(spacing: 8) {
                 Text(connection.status)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(connection.isPaired ? .green : .white.opacity(0.65))
+                    .lineLimit(1)
                 Spacer()
                 Text(input.latestEvent)
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
