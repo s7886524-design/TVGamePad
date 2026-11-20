@@ -907,3 +907,5 @@ struct ContentView: View {
         return String(data: data, encoding: .utf8) ?? "{}"
     }
 }
+
+// Build trigger: verify latest full-screen UI and controller transport safety changes.
