@@ -115,11 +115,16 @@ final class CooCaaSession: ObservableObject {
                     self.isConnecting = false
                     self.isConnected = false
                     self.isPaired = false
+                    self.isRegistering = false
+                    self.adapter = nil
+                    self.receiveBuffer.removeAll()
                     self.status = "连接失败：\(error.localizedDescription)"
                 case .cancelled:
                     self.isConnecting = false
                     self.isConnected = false
                     self.isPaired = false
+                    self.isRegistering = false
+                    self.adapter = nil
                 default:
                     break
                 }
@@ -133,11 +138,16 @@ final class CooCaaSession: ObservableObject {
         guard isPaired, let connection = tcpConnection, let adapter else { return }
         do {
             let frame = try adapter.frame(for: event, sequence: nextSequence())
-            connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+            connection.send(content: frame, completion: .contentProcessed { [weak self, weak connection] error in
                 guard let error else { return }
                 Task { @MainActor in
-                    self?.status = "按键发送失败：\(error.localizedDescription)"
-                    self?.isPaired = false
+                    guard let self, let connection, self.tcpConnection === connection else { return }
+                    self.status = "按键发送失败：\(error.localizedDescription)"
+                    self.isPaired = false
+                    self.isConnected = false
+                    self.adapter = nil
+                    connection.cancel()
+                    self.tcpConnection = nil
                 }
             })
         } catch {
@@ -169,11 +179,16 @@ final class CooCaaSession: ObservableObject {
         let newAdapter = CooCaaProtocolAdapter()
         adapter = newAdapter
         let frame = newAdapter.registrationFrame(sequence: nextSequence())
-        connection.send(content: frame, completion: .contentProcessed { [weak self] error in
+        connection.send(content: frame, completion: .contentProcessed { [weak self, weak connection] error in
             guard let error else { return }
             Task { @MainActor in
-                self?.status = "注册请求发送失败：\(error.localizedDescription)"
-                self?.isRegistering = false
+                guard let self, let connection, self.tcpConnection === connection else { return }
+                self.status = "注册请求发送失败：\(error.localizedDescription)"
+                self.isRegistering = false
+                self.isConnected = false
+                self.adapter = nil
+                connection.cancel()
+                self.tcpConnection = nil
             }
         })
         status = "已发送配对请求 · 请在电视上确认"
@@ -191,17 +206,30 @@ final class CooCaaSession: ObservableObject {
                 }
                 if let error {
                     self.status = "电视连接中断：\(error.localizedDescription)"
-                    self.isPaired = false
+                    self.resetConnectionAfterRemoteClose(connection)
                     return
                 }
                 if isComplete {
                     self.status = "电视已关闭连接"
-                    self.isPaired = false
+                    self.resetConnectionAfterRemoteClose(connection)
                     return
                 }
                 self.receiveNext()
             }
         }
+    }
+
+    private func resetConnectionAfterRemoteClose(_ connection: NWConnection) {
+        guard tcpConnection === connection else { return }
+        connection.stateUpdateHandler = nil
+        connection.cancel()
+        tcpConnection = nil
+        isConnected = false
+        isConnecting = false
+        isPaired = false
+        isRegistering = false
+        adapter = nil
+        receiveBuffer.removeAll()
     }
 
     private func consumeFrames() {
