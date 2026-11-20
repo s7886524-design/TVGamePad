@@ -824,7 +824,8 @@ struct ContentView: View {
                 Text(valueText).font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.cyan)
             }
             GeometryReader { g in
-                let progress = (value.wrappedValue - range.lowerBound) / (range.upperBound - range.lowerBound)
+                let safeValue = value.wrappedValue.isFinite ? min(range.upperBound, max(range.lowerBound, value.wrappedValue)) : range.lowerBound
+                let progress = g.size.width > 0 ? (safeValue - range.lowerBound) / (range.upperBound - range.lowerBound) : 0
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.11)).frame(height: 5)
                     Capsule().fill(Color.cyan).frame(width: max(0, g.size.width * progress), height: 5)
@@ -834,7 +835,10 @@ struct ContentView: View {
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0).onChanged { p in
-                    let t = min(1, max(0, p.location.x / g.size.width))
+                    guard g.size.width > 0 else { return }
+                    let raw = p.location.x / g.size.width
+                    guard raw.isFinite else { return }
+                    let t = min(1, max(0, raw))
                     value.wrappedValue = range.lowerBound + (range.upperBound - range.lowerBound) * t
                 })
             }.frame(height: 22)
@@ -864,11 +868,12 @@ struct ContentView: View {
         let now = Date()
         if kind == .press && now.timeIntervalSince(lastHapticTime) < 0.045 { return }
         lastHapticTime = now
+        let safeIntensity = CGFloat(min(1, max(0, hapticStrength.isFinite ? hapticStrength : 0.72)))
         switch kind {
         case .press:
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.prepare()
-            generator.impactOccurred(intensity: CGFloat(hapticStrength))
+            generator.impactOccurred(intensity: safeIntensity)
         case .selection:
             let generator = UISelectionFeedbackGenerator()
             generator.prepare()
