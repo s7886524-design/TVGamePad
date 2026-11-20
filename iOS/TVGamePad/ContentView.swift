@@ -221,107 +221,147 @@ struct ContentView: View {
 
     private var controllerLibrary: some View {
         GeometryReader { geo in
-            let compact = geo.size.height < 430
-            let cardGap: CGFloat = 12
-            let horizontalInset: CGFloat = max(18, geo.size.width * 0.035)
-            let cardWidth = max(150, (geo.size.width - horizontalInset * 2 - cardGap * 4) / 5)
-            let cardHeight = min(geo.size.height * 0.57, compact ? 245 : 390)
+            let compact = geo.size.height < 390
+            let cardWidth = min(geo.size.width * 0.60, 560)
+            let cardHeight = min(geo.size.height * 0.62, 310)
 
-            VStack(spacing: compact ? 8 : 12) {
-                topBar
-                    .frame(height: compact ? 30 : 38)
+            ScrollViewReader { proxy in
+                VStack(spacing: compact ? 9 : 15) {
+                    topBar
+                        .frame(height: compact ? 28 : 34)
+                        .padding(.horizontal, 26)
 
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("CHOOSE YOUR DECK")
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(2.3).foregroundStyle(.cyan)
-                        Text("选择手柄")
-                            .font(.system(size: compact ? 21 : 27, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                    HStack(alignment: .lastTextBaseline) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("CONTROLLER LIBRARY")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .tracking(2.5).foregroundStyle(.cyan)
+                            Text("选择你的手柄")
+                                .font(.system(size: compact ? 23 : 29, weight: .semibold, design: .rounded))
+                                .tracking(-0.7).foregroundStyle(.white)
+                        }
+                        Spacer()
+                        HStack(spacing: 7) {
+                            Circle().fill(.green).frame(width: 6, height: 6)
+                            Text("已连接")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.green)
+                        }
                     }
-                    Spacer()
-                    HStack(spacing: 7) {
-                        Circle().fill(.green).frame(width: 6, height: 6)
-                        Text("已连接 · \(connection.discoveredTV?.deviceName ?? "电视")")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.green)
-                    }
-                }
-                .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 28)
 
-                HStack(spacing: cardGap) {
-                    ForEach(ControllerKind.allCases) { kind in
-                        Button {
-                            selected = kind
-                            tactile(.selection)
-                        } label: {
-                            VStack(alignment: .leading, spacing: compact ? 7 : 10) {
-                                controllerMiniature(kind)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: cardHeight * 0.42)
-                                    .background(PadPalette.base.opacity(0.8), in: RoundedRectangle(cornerRadius: 13))
-                                Text(kind.rawValue)
-                                    .font(.system(size: compact ? 17 : 21, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.white)
-                                Text(kind.subtitle)
-                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                    .tracking(1).foregroundStyle(PadPalette.muted)
-                                Spacer(minLength: 0)
-                                HStack(spacing: 5) {
-                                    Text(selected == kind ? "当前选择" : "选择此布局")
-                                    Spacer(minLength: 0)
-                                    Image(systemName: selected == kind ? "checkmark.circle.fill" : "arrow.up.right")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 18) {
+                            ForEach(ControllerKind.allCases) { kind in
+                                Button {
+                                    selected = kind
+                                    tactile(.selection)
+                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                                        proxy.scrollTo(kind.id, anchor: .center)
+                                    }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        HStack {
+                                            Text(kind.subtitle)
+                                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                                .tracking(1.7).foregroundStyle(PadPalette.muted)
+                                            Spacer()
+                                            if selected == kind {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 10, weight: .bold))
+                                                    .foregroundStyle(kind.accent)
+                                            }
+                                        }
+                                        .padding(.bottom, 13)
+
+                                        controllerMiniature(kind)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: cardHeight * 0.49)
+                                            .background(PadPalette.base.opacity(0.9),
+                                                        in: RoundedRectangle(cornerRadius: 15))
+                                            .padding(.bottom, 15)
+
+                                        HStack(alignment: .firstTextBaseline) {
+                                            Text(kind.rawValue)
+                                                .font(.system(size: compact ? 23 : 28, weight: .semibold, design: .rounded))
+                                                .tracking(-0.6).foregroundStyle(.white)
+                                            Spacer()
+                                            Text(selected == kind ? "已选择" : "选择")
+                                                .font(.system(size: 10, weight: .medium))
+                                                .foregroundStyle(selected == kind ? kind.accent : PadPalette.muted)
+                                        }
+                                        Spacer(minLength: 0)
+                                        Rectangle().fill(selected == kind ? kind.accent : Color.white.opacity(0.08))
+                                            .frame(height: 2)
+                                            .padding(.top, 14)
+                                    }
+                                    .padding(.horizontal, 19)
+                                    .padding(.vertical, 16)
+                                    .frame(width: cardWidth, height: cardHeight)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(PadPalette.panel)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .stroke(selected == kind ? kind.accent.opacity(0.8) : PadPalette.line,
+                                                    lineWidth: selected == kind ? 1.5 : 1)
+                                    )
                                 }
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(selected == kind ? kind.accent : PadPalette.muted)
+                                .buttonStyle(.plain)
+                                .id(kind.id)
                             }
-                            .padding(compact ? 10 : 13)
-                            .frame(width: cardWidth, height: cardHeight, alignment: .leading)
-                            .background(PadPalette.panel, in: RoundedRectangle(cornerRadius: 17))
-                            .overlay(RoundedRectangle(cornerRadius: 17)
-                                .stroke(selected == kind ? kind.accent.opacity(0.8) : PadPalette.line,
-                                        lineWidth: selected == kind ? 1.7 : 1))
+                        }
+                        .padding(.horizontal, max(20, (geo.size.width - cardWidth) / 2))
+                    }
+                    .frame(height: cardHeight + 8)
+                    .contentMargins(.horizontal, 0)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                            proxy.scrollTo(selected.id, anchor: .center)
+                        }
+                    }
+                    .onChange(of: selected) { kind in
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                            proxy.scrollTo(kind.id, anchor: .center)
+                        }
+                    }
+
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(selected.rawValue)  /  \(selected.subtitle)")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Text("左右滑动浏览 · 选择后进入完整按键界面")
+                                .font(.system(size: 10)).foregroundStyle(PadPalette.muted)
+                        }
+                        Spacer()
+                        Button {
+                            input.releaseAll()
+                            route = .play
+                            tactile(.success)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text("进入手柄")
+                                Image(systemName: "arrow.right")
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(PadPalette.base)
+                            .padding(.horizontal, 24)
+                            .frame(height: compact ? 40 : 46)
+                            .background(selected.accent, in: Capsule())
                         }
                         .buttonStyle(.plain)
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 28)
 
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("\(selected.rawValue) · \(selected.subtitle)")
-                            .font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                        Text("按下进入全屏手柄，所有按键均可触控操作。")
-                            .font(.system(size: 10)).foregroundStyle(PadPalette.muted)
-                    }
-                    Spacer(minLength: 8)
-                    Button {
-                        input.releaseAll()
-                        route = .play
-                        tactile(.success)
-                    } label: {
-                        HStack(spacing: 9) {
-                            Text("进入手柄")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(PadPalette.base)
-                        .padding(.horizontal, 22)
-                        .frame(height: compact ? 39 : 45)
-                        .background(selected.accent, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
+                    bottomBrand.padding(.horizontal, 26)
                 }
-                .frame(maxWidth: .infinity)
-
-                bottomBrand
+                .padding(.top, compact ? 7 : 12)
+                .padding(.bottom, 8)
+                .frame(width: geo.size.width, height: geo.size.height)
+                .background(PadPalette.base)
             }
-            .padding(.horizontal, horizontalInset)
-            .padding(.top, compact ? 7 : 11)
-            .padding(.bottom, 7)
-            .frame(width: geo.size.width, height: geo.size.height)
-            .background(PadPalette.base)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
@@ -639,8 +679,10 @@ struct ContentView: View {
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { _ in
                     if editingLayout { return }
-                    input.update(name, eventButton: mapped(name), pressed: true)
-                    tactile(.press)
+                    if !input.pressedButtons.contains(name) {
+                        input.update(name, eventButton: mapped(name), pressed: true)
+                        tactile(.press)
+                    }
                 }
                 .onEnded { _ in input.update(name, eventButton: mapped(name), pressed: false) })
     }
@@ -665,8 +707,10 @@ struct ContentView: View {
                         offsets[name] = CGSize(width: value.translation.width, height: value.translation.height)
                         return
                     }
-                    input.update(name, eventButton: mapped(name), pressed: true)
-                    tactile(.press)
+                    if !input.pressedButtons.contains(name) {
+                        input.update(name, eventButton: mapped(name), pressed: true)
+                        tactile(.press)
+                    }
                 }
                 .onEnded { _ in
                     if editingLayout { savedOffsets = encodeOffsets(offsets) }
@@ -679,7 +723,12 @@ struct ContentView: View {
             .foregroundStyle(.white.opacity(0.85)).frame(width: size * 1.3, height: size * 0.52)
             .background(PadPalette.raised, in: Capsule()).overlay(Capsule().stroke(PadPalette.line, lineWidth: 1))
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in input.update(name, eventButton: mapped(name), pressed: true); tactile(.press) }
+                .onChanged { _ in
+                    if !input.pressedButtons.contains(name) {
+                        input.update(name, eventButton: mapped(name), pressed: true)
+                        tactile(.press)
+                    }
+                }
                 .onEnded { _ in input.update(name, eventButton: mapped(name), pressed: false) })
     }
 
@@ -689,7 +738,12 @@ struct ContentView: View {
             .background(PadPalette.raised, in: RoundedRectangle(cornerRadius: 9))
             .overlay(RoundedRectangle(cornerRadius: 9).stroke(PadPalette.line, lineWidth: 1))
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in input.update(name, eventButton: mapped(name), pressed: true); tactile(.press) }
+                .onChanged { _ in
+                    if !input.pressedButtons.contains(name) {
+                        input.update(name, eventButton: mapped(name), pressed: true)
+                        tactile(.press)
+                    }
+                }
                 .onEnded { _ in input.update(name, eventButton: mapped(name), pressed: false) })
     }
 
