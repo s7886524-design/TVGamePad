@@ -1,10 +1,22 @@
 name: iOS Build
+
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "iOS/TVGamePad/**"
+      - "project.yml"
+      - ".github/workflows/ios.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: macos-14
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -18,3 +30,4 @@ jobs:
         with:
           name: TVGamePad-iOS-Simulator
           path: build/Build/Products/Debug-iphonesimulator/TVGamePad.app
+          retention-days: 14
